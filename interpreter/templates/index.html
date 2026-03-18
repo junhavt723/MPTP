@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>한국어 ↔ 따갈로그어 동시통역</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <div class="app">
+
+    <!-- Header -->
+    <header class="header">
+      <h1>🎙️ 한국어 → 따갈로그어 동시통역</h1>
+      <p class="subtitle">Sabay na Pagsasalin · Korean ↔ Tagalog Interpreter</p>
+      <div id="status-bar" class="status-bar offline">
+        <span id="status-text">모델 확인 중…</span>
+        <span id="conn-indicator" class="dot disconnected"></span>
+      </div>
+    </header>
+
+    <!-- Mode tabs -->
+    <div class="tabs">
+      <button class="tab active" data-tab="voice">🎤 음성 입력</button>
+      <button class="tab" data-tab="text">⌨️ 텍스트 입력</button>
+      <button class="tab" data-tab="history">📋 기록</button>
+    </div>
+
+    <!-- Voice Tab -->
+    <section id="tab-voice" class="tab-content active">
+      <div class="mic-area">
+        <button id="btn-record" class="btn-record">
+          <span class="mic-icon">🎤</span>
+          <span class="mic-label">녹음 시작</span>
+        </button>
+        <div id="recording-indicator" class="recording-indicator hidden">
+          <span class="pulse"></span> 녹음 중…
+        </div>
+      </div>
+
+      <div class="options-row">
+        <label class="toggle-label">
+          <input type="checkbox" id="chk-speak-voice" checked />
+          🔊 번역 음성 출력
+        </label>
+        <label class="toggle-label">
+          <input type="checkbox" id="chk-continuous" />
+          🔄 연속 통역 모드
+        </label>
+      </div>
+
+      <div id="voice-result" class="result-panel hidden">
+        <div class="result-row">
+          <span class="lang-label ko">한국어</span>
+          <p id="voice-korean" class="result-text"></p>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="result-row">
+          <span class="lang-label en">English</span>
+          <p id="voice-english" class="result-text secondary"></p>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="result-row">
+          <span class="lang-label tl">Tagalog</span>
+          <p id="voice-tagalog" class="result-text main"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Text Tab -->
+    <section id="tab-text" class="tab-content">
+      <div class="text-input-area">
+        <label class="input-label">한국어 텍스트 입력:</label>
+        <textarea id="txt-korean" placeholder="번역할 한국어를 입력하세요…" rows="4"></textarea>
+        <div class="btn-row">
+          <button id="btn-translate" class="btn-primary">번역하기 →</button>
+          <label class="toggle-label">
+            <input type="checkbox" id="chk-speak-text" checked />
+            🔊 음성 출력
+          </label>
+        </div>
+      </div>
+
+      <div id="text-result" class="result-panel hidden">
+        <div class="result-row">
+          <span class="lang-label ko">한국어</span>
+          <p id="text-korean" class="result-text"></p>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="result-row">
+          <span class="lang-label en">English</span>
+          <p id="text-english" class="result-text secondary"></p>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="result-row">
+          <span class="lang-label tl">Tagalog</span>
+          <p id="text-tagalog" class="result-text main"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- History Tab -->
+    <section id="tab-history" class="tab-content">
+      <div class="history-header">
+        <h3>번역 기록</h3>
+        <button id="btn-clear-history" class="btn-secondary">지우기</button>
+      </div>
+      <div id="history-list" class="history-list">
+        <p class="empty-msg">번역 기록이 없습니다.</p>
+      </div>
+    </section>
+
+    <!-- Loading overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+      <div class="spinner"></div>
+      <p id="loading-text">번역 중…</p>
+    </div>
+
+    <!-- Error toast -->
+    <div id="error-toast" class="error-toast hidden"></div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"
+          onerror="loadLocalSocketIO()"></script>
+  <script>
+    /* Fallback if no internet – serve from local copy if available */
+    function loadLocalSocketIO() {
+      const s = document.createElement('script');
+      s.src = '/static/js/socket.io.min.js';
+      document.head.appendChild(s);
+    }
+  </script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
