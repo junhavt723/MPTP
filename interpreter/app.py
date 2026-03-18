@@ -191,19 +191,20 @@ def print_qr(url: str):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     local_ip = get_local_ip()
-    local_url = f"http://{local_ip}:{port}"
+    local_url = f"https://{local_ip}:{port}"
 
     logger.info("=" * 55)
     logger.info("  Korean → Tagalog Interpreter  (PWA ready)")
     logger.info("=" * 55)
-    logger.info(f"  Local:   http://localhost:{port}")
+    logger.info(f"  Local:   https://localhost:{port}")
     logger.info(f"  Network: {local_url}")
     logger.info("")
     logger.info("  📱 같은 와이파이에서 휴대폰으로 접속:")
     logger.info(f"  {local_url}")
+    logger.info("  ⚠️  브라우저에서 '보안 경고'가 뜨면 '고급 > 계속하기' 클릭")
     logger.info("  (또는 아래 QR 코드를 스캔하세요)")
     logger.info("=" * 55)
 
     print_qr(local_url)
 
-    socketio.run(app, host="0.0.0.0", port=port, debug=False)
+    socketio.run(app, host="0.0.0.0", port=port, debug=False, ssl_context="adhoc")
