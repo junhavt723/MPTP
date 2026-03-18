@@ -4,9 +4,10 @@ Flask + SocketIO backend (works fully offline after model download)
 """
 
 import os
+import socket
 import logging
 import base64
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit
 
 from translation import OfflineTranslator
@@ -86,6 +87,16 @@ def status():
     })
 
 
+@app.route("/static/sw.js")
+def service_worker():
+    """Serve service worker from /static/sw.js with correct headers."""
+    return send_from_directory(
+        os.path.join(app.root_path, "static"),
+        "sw.js",
+        mimetype="application/javascript",
+    )
+
+
 # ── WebSocket Events ─────────────────────────────────────────────────────────
 
 @socketio.on("connect")
@@ -155,7 +166,44 @@ def on_translate_text(data):
         emit("error", {"message": str(e)})
 
 
+def get_local_ip() -> str:
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))
+            return s.getsockname()[0]
+    except Exception:
+        return "localhost"
+
+
+def print_qr(url: str):
+    """Print a tiny QR code in the terminal using unicode blocks."""
+    try:
+        import qrcode  # type: ignore
+        qr = qrcode.QRCode(border=1)
+        qr.add_data(url)
+        qr.make(fit=True)
+        print()
+        qr.print_ascii(invert=True)
+    except ImportError:
+        pass  # qrcode not installed – skip
+
+
 if __name__ == "__main__":
-    logger.info("Starting Korean → Tagalog Interpreter…")
-    logger.info("Open http://localhost:5000 in your browser.")
-    socketio.run(app, host="0.0.0.0", port=5000, debug=False)
+    port = int(os.environ.get("PORT", 5000))
+    local_ip = get_local_ip()
+    local_url = f"http://{local_ip}:{port}"
+
+    logger.info("=" * 55)
+    logger.info("  Korean → Tagalog Interpreter  (PWA ready)")
+    logger.info("=" * 55)
+    logger.info(f"  Local:   http://localhost:{port}")
+    logger.info(f"  Network: {local_url}")
+    logger.info("")
+    logger.info("  📱 같은 와이파이에서 휴대폰으로 접속:")
+    logger.info(f"  {local_url}")
+    logger.info("  (또는 아래 QR 코드를 스캔하세요)")
+    logger.info("=" * 55)
+
+    print_qr(local_url)
+
+    socketio.run(app, host="0.0.0.0", port=port, debug=False)

@@ -1,262 +1,246 @@
 'use strict';
 
-/* ── DOM refs ── */
-const $  = id => document.getElementById(id);
-const tabs = document.querySelectorAll('.tab');
-const tabContents = document.querySelectorAll('.tab-content');
+/* ── Helpers ── */
+const $ = id => document.getElementById(id);
+const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
-const btnRecord     = $('btn-record');
-const recIndicator  = $('recording-indicator');
-const chkSpeakVoice = $('chk-speak-voice');
-const chkContinuous = $('chk-continuous');
-const voiceResult   = $('voice-result');
-const voiceKorean   = $('voice-korean');
-const voiceEnglish  = $('voice-english');
-const voiceTagalog  = $('voice-tagalog');
+/* ── DOM ── */
+const statusText  = $('status-text');
+const connDot     = $('conn-dot');
 
-const txtKorean     = $('txt-korean');
-const btnTranslate  = $('btn-translate');
-const chkSpeakText  = $('chk-speak-text');
-const textResult    = $('text-result');
-const textKorean    = $('text-korean');
-const textEnglish   = $('text-english');
-const textTagalog   = $('text-tagalog');
+const btnMic      = $('btn-mic');
+const micLabel    = $('mic-label');
+const wave        = $('wave');
+const chkSpeak    = $('chk-speak');
+const chkCont     = $('chk-continuous');
 
-const historyList   = $('history-list');
-const btnClearHist  = $('btn-clear-history');
+const txtKo       = $('txt-ko');
+const txtEn       = $('txt-en');
+const txtTl       = $('txt-tl');
 
-const loadingOverlay = $('loading-overlay');
-const loadingText    = $('loading-text');
-const errorToast     = $('error-toast');
-const statusText     = $('status-text');
-const connDot        = $('conn-indicator');
+const inpText     = $('inp-text');
+const btnTrans    = $('btn-translate');
+const chkSpeakTxt = $('chk-speak-text');
+const textCard    = $('text-result-card');
+const tKo         = $('t-ko');
+const tEn         = $('t-en');
+const tTl         = $('t-tl');
+
+const historyList = $('history-list');
+const btnClear    = $('btn-clear');
+
+const overlay     = $('overlay');
+const overlayMsg  = $('overlay-msg');
+const toast       = $('toast');
 
 /* ── State ── */
-let socket = null;
-let isRecording = false;
-let mediaRecorder = null;
-let audioChunks = [];
-let continuousTimer = null;
-let history = JSON.parse(localStorage.getItem('interp-history') || '[]');
+let socket       = null;
+let isRecording  = false;
+let mediaRec     = null;
+let audioChunks  = [];
+let contTimer    = null;
+let micStream    = null;
+let history      = JSON.parse(localStorage.getItem('interp-h') || '[]');
 
-/* ── Tab switching ── */
-tabs.forEach(tab => {
-  tab.addEventListener('click', () => {
-    tabs.forEach(t => t.classList.remove('active'));
-    tabContents.forEach(c => c.classList.remove('active'));
-    tab.classList.add('active');
-    $('tab-' + tab.dataset.tab).classList.add('active');
-    if (tab.dataset.tab === 'history') renderHistory();
+/* ── Bottom nav ── */
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    $('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'history') renderHistory();
   });
 });
 
 /* ── Socket.IO ── */
 function initSocket() {
-  socket = io({ transports: ['websocket'] });
+  socket = io({ transports: ['websocket'], reconnectionDelay: 1000 });
 
   socket.on('connect', () => {
-    connDot.className = 'dot connected';
-    checkModelStatus();
+    connDot.className = 'conn-dot on';
+    checkStatus();
   });
-
   socket.on('disconnect', () => {
-    connDot.className = 'dot disconnected';
-    statusText.textContent = '연결 끊김';
+    connDot.className = 'conn-dot off';
+    statusText.textContent = '서버 연결 끊김';
   });
+  socket.on('status', d => { statusText.textContent = d.message; });
 
-  socket.on('status', data => {
-    statusText.textContent = data.message;
+  socket.on('partial_result', d => {
+    setVoiceResult(d);
+    hideOverlay();
   });
-
-  socket.on('partial_result', data => {
-    showVoiceResult(data);
-    setLoading(false);
+  socket.on('translation_result', d => {
+    setVoiceResult(d);
+    addHistory(d);
+    hideOverlay();
+    if (chkCont.checked && isRecording) nextSegment();
   });
-
-  socket.on('translation_result', data => {
-    showVoiceResult(data);
-    addHistory(data);
-    setLoading(false);
-
-    if (chkContinuous.checked && isRecording) {
-      startSegment();
-    }
-  });
-
-  socket.on('error', data => {
-    showError(data.message);
-    setLoading(false);
+  socket.on('error', d => {
+    showToast(d.message);
+    hideOverlay();
   });
 }
 
-/* ── Model status check ── */
-async function checkModelStatus() {
+async function checkStatus() {
   try {
     const r = await fetch('/api/status');
     const s = await r.json();
     if (s.ko_en_ready && s.en_tl_ready) {
-      statusText.textContent = '오프라인 모드 준비됨 ✓';
+      statusText.textContent = '오프라인 준비 완료 ✓';
     } else {
       statusText.textContent = '⚠ 모델 미설치 – download_models.py 실행 필요';
     }
   } catch { /* ignore */ }
 }
 
-/* ── Recording ── */
-btnRecord.addEventListener('click', toggleRecording);
-
-async function toggleRecording() {
-  if (isRecording) {
-    stopRecording();
-  } else {
-    await startRecording();
-  }
-}
+/* ── Mic recording ── */
+btnMic.addEventListener('click', () => {
+  if (isRecording) stopRecording();
+  else startRecording();
+});
 
 async function startRecording() {
   if (!navigator.mediaDevices) {
-    showError('마이크 접근 불가: HTTPS 또는 localhost 필요');
+    showToast('마이크 접근 불가: HTTPS 또는 localhost 필요');
     return;
   }
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    isRecording = true;
-    btnRecord.classList.add('recording');
-    btnRecord.querySelector('.mic-label').textContent = '중지';
-    recIndicator.classList.remove('hidden');
-    startSegment(stream);
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch (e) {
-    showError('마이크 오류: ' + e.message);
+    showToast('마이크 오류: ' + e.message);
+    return;
   }
+  isRecording = true;
+  btnMic.classList.add('recording');
+  micLabel.textContent = '중지';
+  wave.classList.remove('hidden');
+  removePlaceholders();
+  nextSegment();
 }
 
 function stopRecording() {
   isRecording = false;
-  clearTimeout(continuousTimer);
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-    mediaRecorder.stop();
-  }
-  btnRecord.classList.remove('recording');
-  btnRecord.querySelector('.mic-label').textContent = '녹음 시작';
-  recIndicator.classList.add('hidden');
+  clearTimeout(contTimer);
+  if (mediaRec && mediaRec.state !== 'inactive') mediaRec.stop();
+  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+  btnMic.classList.remove('recording');
+  micLabel.textContent = '녹음 시작';
+  wave.classList.add('hidden');
 }
 
-function startSegment(stream) {
-  if (!stream) return;   // reuse existing stream isn't supported here simply
+function nextSegment() {
+  if (!micStream) return;
   audioChunks = [];
-  mediaRecorder = new MediaRecorder(stream);
-  mediaRecorder.ondataavailable = e => {
-    if (e.data.size > 0) audioChunks.push(e.data);
-  };
-  mediaRecorder.onstop = sendAudioChunk;
+  mediaRec = new MediaRecorder(micStream);
+  mediaRec.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+  mediaRec.onstop = sendChunk;
+  mediaRec.start();
 
-  const segmentMs = chkContinuous.checked ? 4000 : 30000;
-  mediaRecorder.start();
-
-  if (chkContinuous.checked) {
-    continuousTimer = setTimeout(() => {
-      if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-    }, segmentMs);
-  }
+  const ms = chkCont.checked ? 4000 : 10000;
+  contTimer = setTimeout(() => {
+    if (mediaRec && mediaRec.state === 'recording') mediaRec.stop();
+  }, ms);
 }
 
-async function sendAudioChunk() {
-  if (audioChunks.length === 0) return;
+async function sendChunk() {
+  if (!audioChunks.length) return;
   const blob = new Blob(audioChunks, { type: 'audio/webm' });
-  const arrayBuffer = await blob.arrayBuffer();
-  const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+  const buf  = await blob.arrayBuffer();
+  const b64  = btoa(String.fromCharCode(...new Uint8Array(buf)));
+  showOverlay('음성 인식 중…');
+  socket.emit('audio_chunk', { audio: b64, speak: chkSpeak.checked });
+}
 
-  setLoading(true, '음성 인식 중…');
-  socket.emit('audio_chunk', {
-    audio: base64,
-    speak: chkSpeakVoice.checked,
+/* ── Voice result display ── */
+function setVoiceResult({ korean, english, tagalog }) {
+  if (korean)  { txtKo.textContent = korean;  txtKo.classList.remove('placeholder'); }
+  if (english) { txtEn.textContent = english; txtEn.classList.remove('placeholder'); }
+  if (tagalog) { txtTl.textContent = tagalog; txtTl.classList.remove('placeholder'); }
+}
+
+function removePlaceholders() {
+  [txtKo, txtEn, txtTl].forEach(el => {
+    el.classList.remove('placeholder');
+    el.textContent = '';
   });
 }
 
 /* ── Text translation ── */
-btnTranslate.addEventListener('click', async () => {
-  const text = txtKorean.value.trim();
-  if (!text) return;
+btnTrans.addEventListener('click', translateText);
+inpText.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) translateText();
+});
 
-  setLoading(true, '번역 중…');
-  textResult.classList.add('hidden');
+async function translateText() {
+  const text = inpText.value.trim();
+  if (!text) return;
+  showOverlay('번역 중…');
+  textCard.style.display = 'none';
+  btnTrans.disabled = true;
 
   try {
     const r = await fetch('/api/translate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, speak: chkSpeakText.checked }),
+      body: JSON.stringify({ text, speak: chkSpeakTxt.checked }),
     });
     const data = await r.json();
-    if (data.error) { showError(data.error); return; }
-
-    textKorean.textContent  = data.korean;
-    textEnglish.textContent = data.english;
-    textTagalog.textContent = data.tagalog;
-    textResult.classList.remove('hidden');
+    if (data.error) { showToast(data.error); return; }
+    tKo.textContent = data.korean;
+    tEn.textContent = data.english;
+    tTl.textContent = data.tagalog;
+    textCard.style.display = '';
     addHistory(data);
   } catch (e) {
-    showError('번역 오류: ' + e.message);
+    showToast('오류: ' + e.message);
   } finally {
-    setLoading(false);
+    hideOverlay();
+    btnTrans.disabled = false;
   }
-});
-
-/* Ctrl+Enter submits */
-txtKorean.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) btnTranslate.click();
-});
-
-/* ── Helpers ── */
-function showVoiceResult({ korean, english, tagalog }) {
-  voiceKorean.textContent  = korean  || '';
-  voiceEnglish.textContent = english || '';
-  voiceTagalog.textContent = tagalog || '';
-  voiceResult.classList.remove('hidden');
-}
-
-function setLoading(on, msg = '번역 중…') {
-  loadingOverlay.classList.toggle('hidden', !on);
-  loadingText.textContent = msg;
-}
-
-let toastTimer;
-function showError(msg) {
-  errorToast.textContent = msg;
-  errorToast.classList.remove('hidden');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => errorToast.classList.add('hidden'), 4000);
 }
 
 /* ── History ── */
 function addHistory(entry) {
-  history.unshift({ ...entry, time: new Date().toLocaleTimeString() });
+  history.unshift({ ...entry, ts: new Date().toLocaleTimeString() });
   if (history.length > 100) history.pop();
-  localStorage.setItem('interp-history', JSON.stringify(history));
+  localStorage.setItem('interp-h', JSON.stringify(history));
 }
 
 function renderHistory() {
-  if (history.length === 0) {
-    historyList.innerHTML = '<p class="empty-msg">번역 기록이 없습니다.</p>';
+  if (!history.length) {
+    historyList.innerHTML = '<p class="empty-hint">기록이 없습니다.</p>';
     return;
   }
   historyList.innerHTML = history.map(h => `
     <div class="history-item">
-      <span class="h-ko">${escHtml(h.korean)}</span>
-      <span class="h-tl">${escHtml(h.tagalog)}</span>
-      <span class="h-time">${escHtml(h.time)}</span>
+      <span class="h-ko">${esc(h.korean)}</span>
+      <span class="h-tl">${esc(h.tagalog)}</span>
+      <span class="h-ts">${esc(h.ts)}</span>
     </div>
   `).join('');
 }
 
-btnClearHist.addEventListener('click', () => {
+btnClear.addEventListener('click', () => {
   history = [];
-  localStorage.removeItem('interp-history');
+  localStorage.removeItem('interp-h');
   renderHistory();
 });
 
-function escHtml(str) {
-  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+/* ── UI utilities ── */
+function showOverlay(msg = '번역 중…') {
+  overlayMsg.textContent = msg;
+  overlay.classList.remove('hidden');
+}
+function hideOverlay() { overlay.classList.add('hidden'); }
+
+let toastTimer;
+function showToast(msg, type = 'error') {
+  toast.textContent = msg;
+  toast.className = `toast ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.add('hidden'), 4000);
 }
 
 /* ── Init ── */

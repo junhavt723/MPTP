@@ -2,134 +2,179 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>한국어 ↔ 따갈로그어 동시통역</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="통역앱" />
+  <meta name="theme-color" content="#6c63ff" />
+
+  <link rel="manifest" href="/static/manifest.json" />
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
   <link rel="stylesheet" href="/static/css/style.css" />
+
+  <title>한국어 → 따갈로그어 통역</title>
 </head>
 <body>
   <div class="app">
 
-    <!-- Header -->
-    <header class="header">
-      <h1>🎙️ 한국어 → 따갈로그어 동시통역</h1>
-      <p class="subtitle">Sabay na Pagsasalin · Korean ↔ Tagalog Interpreter</p>
-      <div id="status-bar" class="status-bar offline">
-        <span id="status-text">모델 확인 중…</span>
-        <span id="conn-indicator" class="dot disconnected"></span>
-      </div>
-    </header>
-
-    <!-- Mode tabs -->
-    <div class="tabs">
-      <button class="tab active" data-tab="voice">🎤 음성 입력</button>
-      <button class="tab" data-tab="text">⌨️ 텍스트 입력</button>
-      <button class="tab" data-tab="history">📋 기록</button>
+    <!-- Status bar (safe area aware) -->
+    <div class="top-bar">
+      <span id="status-text" class="status-text">준비 중…</span>
+      <span id="conn-dot" class="conn-dot"></span>
     </div>
 
-    <!-- Voice Tab -->
-    <section id="tab-voice" class="tab-content active">
-      <div class="mic-area">
-        <button id="btn-record" class="btn-record">
-          <span class="mic-icon">🎤</span>
-          <span class="mic-label">녹음 시작</span>
-        </button>
-        <div id="recording-indicator" class="recording-indicator hidden">
-          <span class="pulse"></span> 녹음 중…
-        </div>
-      </div>
+    <!-- Main content -->
+    <main class="main">
 
-      <div class="options-row">
-        <label class="toggle-label">
-          <input type="checkbox" id="chk-speak-voice" checked />
-          🔊 번역 음성 출력
-        </label>
-        <label class="toggle-label">
-          <input type="checkbox" id="chk-continuous" />
-          🔄 연속 통역 모드
-        </label>
-      </div>
+      <!-- ── VOICE TAB ── -->
+      <section id="tab-voice" class="tab-pane active">
+        <div class="result-card" id="result-card">
+          <div class="result-row" id="row-ko">
+            <span class="lang-badge ko">KO</span>
+            <p id="txt-ko" class="result-txt placeholder">한국어 음성을 기다리는 중…</p>
+          </div>
+          <div class="divider-arrow">↓</div>
+          <div class="result-row" id="row-en">
+            <span class="lang-badge en">EN</span>
+            <p id="txt-en" class="result-txt secondary placeholder">–</p>
+          </div>
+          <div class="divider-arrow">↓</div>
+          <div class="result-row" id="row-tl">
+            <span class="lang-badge tl">TL</span>
+            <p id="txt-tl" class="result-txt main placeholder">–</p>
+          </div>
+        </div>
 
-      <div id="voice-result" class="result-panel hidden">
-        <div class="result-row">
-          <span class="lang-label ko">한국어</span>
-          <p id="voice-korean" class="result-text"></p>
-        </div>
-        <div class="arrow">↓</div>
-        <div class="result-row">
-          <span class="lang-label en">English</span>
-          <p id="voice-english" class="result-text secondary"></p>
-        </div>
-        <div class="arrow">↓</div>
-        <div class="result-row">
-          <span class="lang-label tl">Tagalog</span>
-          <p id="voice-tagalog" class="result-text main"></p>
-        </div>
-      </div>
-    </section>
-
-    <!-- Text Tab -->
-    <section id="tab-text" class="tab-content">
-      <div class="text-input-area">
-        <label class="input-label">한국어 텍스트 입력:</label>
-        <textarea id="txt-korean" placeholder="번역할 한국어를 입력하세요…" rows="4"></textarea>
-        <div class="btn-row">
-          <button id="btn-translate" class="btn-primary">번역하기 →</button>
-          <label class="toggle-label">
-            <input type="checkbox" id="chk-speak-text" checked />
-            🔊 음성 출력
+        <div class="options-strip">
+          <label class="chip-toggle">
+            <input type="checkbox" id="chk-speak" checked />
+            <span>🔊 음성 출력</span>
+          </label>
+          <label class="chip-toggle">
+            <input type="checkbox" id="chk-continuous" />
+            <span>🔄 연속 모드</span>
           </label>
         </div>
-      </div>
 
-      <div id="text-result" class="result-panel hidden">
-        <div class="result-row">
-          <span class="lang-label ko">한국어</span>
-          <p id="text-korean" class="result-text"></p>
+        <!-- Big mic button -->
+        <div class="mic-wrap">
+          <button id="btn-mic" class="btn-mic" aria-label="녹음">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="2" width="6" height="12" rx="3"/>
+              <path d="M5 10a7 7 0 0 0 14 0"/>
+              <line x1="12" y1="17" x2="12" y2="22"/>
+              <line x1="8" y1="22" x2="16" y2="22"/>
+            </svg>
+            <span id="mic-label">녹음 시작</span>
+          </button>
+          <div id="wave" class="wave hidden">
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
         </div>
-        <div class="arrow">↓</div>
-        <div class="result-row">
-          <span class="lang-label en">English</span>
-          <p id="text-english" class="result-text secondary"></p>
+      </section>
+
+      <!-- ── TEXT TAB ── -->
+      <section id="tab-text" class="tab-pane">
+        <textarea id="inp-text"
+          placeholder="한국어 텍스트를 입력하세요…&#10;(Ctrl+Enter 로 번역)"
+          rows="5"
+        ></textarea>
+
+        <div class="options-strip">
+          <label class="chip-toggle">
+            <input type="checkbox" id="chk-speak-text" checked />
+            <span>🔊 음성 출력</span>
+          </label>
+          <button id="btn-translate" class="btn-translate">번역 →</button>
         </div>
-        <div class="arrow">↓</div>
-        <div class="result-row">
-          <span class="lang-label tl">Tagalog</span>
-          <p id="text-tagalog" class="result-text main"></p>
+
+        <div class="result-card" id="text-result-card" style="display:none">
+          <div class="result-row">
+            <span class="lang-badge ko">KO</span>
+            <p id="t-ko" class="result-txt"></p>
+          </div>
+          <div class="divider-arrow">↓</div>
+          <div class="result-row">
+            <span class="lang-badge en">EN</span>
+            <p id="t-en" class="result-txt secondary"></p>
+          </div>
+          <div class="divider-arrow">↓</div>
+          <div class="result-row">
+            <span class="lang-badge tl">TL</span>
+            <p id="t-tl" class="result-txt main"></p>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- History Tab -->
-    <section id="tab-history" class="tab-content">
-      <div class="history-header">
-        <h3>번역 기록</h3>
-        <button id="btn-clear-history" class="btn-secondary">지우기</button>
-      </div>
-      <div id="history-list" class="history-list">
-        <p class="empty-msg">번역 기록이 없습니다.</p>
-      </div>
-    </section>
+      <!-- ── HISTORY TAB ── -->
+      <section id="tab-history" class="tab-pane">
+        <div class="history-toolbar">
+          <span class="history-title">번역 기록</span>
+          <button id="btn-clear" class="btn-ghost">지우기</button>
+        </div>
+        <div id="history-list" class="history-list">
+          <p class="empty-hint">기록이 없습니다.</p>
+        </div>
+      </section>
 
-    <!-- Loading overlay -->
-    <div id="loading-overlay" class="loading-overlay hidden">
-      <div class="spinner"></div>
-      <p id="loading-text">번역 중…</p>
-    </div>
+    </main>
 
-    <!-- Error toast -->
-    <div id="error-toast" class="error-toast hidden"></div>
+    <!-- Bottom navigation (mobile-friendly) -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-tab="voice">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="9" y="2" width="6" height="12" rx="3"/>
+          <path d="M5 10a7 7 0 0 0 14 0"/>
+          <line x1="12" y1="17" x2="12" y2="22"/>
+        </svg>
+        <span>음성</span>
+      </button>
+      <button class="nav-btn" data-tab="text">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <line x1="7" y1="8" x2="17" y2="8"/>
+          <line x1="7" y1="12" x2="17" y2="12"/>
+          <line x1="7" y1="16" x2="13" y2="16"/>
+        </svg>
+        <span>텍스트</span>
+      </button>
+      <button class="nav-btn" data-tab="history">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span>기록</span>
+      </button>
+    </nav>
+
+  </div><!-- .app -->
+
+  <!-- Loading overlay -->
+  <div id="overlay" class="overlay hidden">
+    <div class="spinner"></div>
+    <p id="overlay-msg">번역 중…</p>
   </div>
 
-  <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"
-          onerror="loadLocalSocketIO()"></script>
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- socket.io: try CDN first, fallback to local copy -->
+  <script src="/static/js/socket.io.min.js" onerror="
+    var s=document.createElement('script');
+    s.src='https://cdn.socket.io/4.6.0/socket.io.min.js';
+    document.head.appendChild(s);
+  "></script>
+  <script src="/static/js/app.js"></script>
   <script>
-    /* Fallback if no internet – serve from local copy if available */
-    function loadLocalSocketIO() {
-      const s = document.createElement('script');
-      s.src = '/static/js/socket.io.min.js';
-      document.head.appendChild(s);
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+    }
+    // Handle ?tab= from PWA shortcuts
+    const urlTab = new URLSearchParams(location.search).get('tab');
+    if (urlTab) {
+      document.querySelector(`[data-tab="${urlTab}"]`)?.click();
     }
   </script>
-  <script src="/static/js/app.js"></script>
 </body>
 </html>

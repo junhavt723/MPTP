@@ -1,0 +1,38 @@
+{
+  "name": "한국어↔따갈로그어 동시통역",
+  "short_name": "통역앱",
+  "description": "Korean to Tagalog simultaneous interpreter – works offline",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f1117",
+  "theme_color": "#6c63ff",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["utilities", "productivity"],
+  "shortcuts": [
+    {
+      "name": "음성 통역",
+      "url": "/?tab=voice",
+      "description": "Start voice interpretation"
+    },
+    {
+      "name": "텍스트 번역",
+      "url": "/?tab=text",
+      "description": "Translate typed text"
+    }
+  ]
+}
