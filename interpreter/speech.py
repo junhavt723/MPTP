@@ -29,9 +29,9 @@ class SpeechRecognizer:
         self._stream = None
         self._pa = None
 
-    def load(self):
+    def load(self, model_dir: str | None = None):
         logger.info(f"Loading Whisper model '{self.model_size}'...")
-        self._model = whisper.load_model(self.model_size)
+        self._model = whisper.load_model(self.model_size, download_root=model_dir)
         logger.info("Whisper model loaded.")
 
     def _record_worker(self):

@@ -29,8 +29,8 @@ class OfflineTranslator:
         local_path = MODELS_DIR / local_subdir
         if local_path.exists():
             logger.info(f"Loading model from local cache: {local_path}")
-            tokenizer = MarianTokenizer.from_pretrained(str(local_path))
-            model = MarianMTModel.from_pretrained(str(local_path))
+            tokenizer = MarianTokenizer.from_pretrained(str(local_path), local_files_only=True)
+            model = MarianMTModel.from_pretrained(str(local_path), local_files_only=True)
         else:
             if self.offline_mode:
                 raise FileNotFoundError(

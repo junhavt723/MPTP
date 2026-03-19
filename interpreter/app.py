@@ -38,8 +38,10 @@ def get_translator() -> OfflineTranslator:
 def get_recognizer() -> SpeechRecognizer:
     global _recognizer
     if _recognizer is None:
+        from pathlib import Path
+        whisper_dir = Path(__file__).parent / "models" / "whisper"
         _recognizer = SpeechRecognizer(model_size="small", language="ko")
-        _recognizer.load()
+        _recognizer.load(model_dir=str(whisper_dir) if whisper_dir.exists() else None)
     return _recognizer
 
 

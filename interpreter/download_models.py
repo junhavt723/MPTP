@@ -40,9 +40,11 @@ def download_translation_models():
 
 def download_whisper_model(size: str = "small"):
     import whisper
-    logger.info(f"Downloading Whisper '{size}' model…")
-    whisper.load_model(size)
-    logger.info("Whisper model cached.")
+    whisper_dir = MODELS_DIR / "whisper"
+    whisper_dir.mkdir(parents=True, exist_ok=True)
+    logger.info(f"Downloading Whisper '{size}' model → {whisper_dir}")
+    whisper.load_model(size, download_root=str(whisper_dir))
+    logger.info(f"Whisper model saved to {whisper_dir}")
 
 
 def download_socketio_js():

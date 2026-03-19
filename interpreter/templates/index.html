@@ -31,17 +31,15 @@
       <section id="tab-voice" class="tab-pane active">
         <div class="result-card" id="result-card">
           <div class="result-row" id="row-ko">
-            <span class="lang-badge ko">KO</span>
-            <p id="txt-ko" class="result-txt placeholder">한국어 음성을 기다리는 중…</p>
+            <span class="lang-badge ko">KO · 한국어</span>
+            <p id="txt-ko" class="result-txt placeholder">음성을 기다리는 중…</p>
           </div>
-          <div class="divider-arrow">↓</div>
           <div class="result-row" id="row-en">
-            <span class="lang-badge en">EN</span>
+            <span class="lang-badge en">EN · English</span>
             <p id="txt-en" class="result-txt secondary placeholder">–</p>
           </div>
-          <div class="divider-arrow">↓</div>
           <div class="result-row" id="row-tl">
-            <span class="lang-badge tl">TL</span>
+            <span class="lang-badge tl">TL · Tagalog</span>
             <p id="txt-tl" class="result-txt main placeholder">–</p>
           </div>
         </div>
@@ -91,17 +89,15 @@
 
         <div class="result-card" id="text-result-card" style="display:none">
           <div class="result-row">
-            <span class="lang-badge ko">KO</span>
+            <span class="lang-badge ko">KO · 한국어</span>
             <p id="t-ko" class="result-txt"></p>
           </div>
-          <div class="divider-arrow">↓</div>
           <div class="result-row">
-            <span class="lang-badge en">EN</span>
+            <span class="lang-badge en">EN · English</span>
             <p id="t-en" class="result-txt secondary"></p>
           </div>
-          <div class="divider-arrow">↓</div>
           <div class="result-row">
-            <span class="lang-badge tl">TL</span>
+            <span class="lang-badge tl">TL · Tagalog</span>
             <p id="t-tl" class="result-txt main"></p>
           </div>
         </div>
@@ -159,12 +155,8 @@
   <!-- Toast -->
   <div id="toast" class="toast hidden"></div>
 
-  <!-- socket.io: try CDN first, fallback to local copy -->
-  <script src="/static/js/socket.io.min.js" onerror="
-    var s=document.createElement('script');
-    s.src='https://cdn.socket.io/4.6.0/socket.io.min.js';
-    document.head.appendChild(s);
-  "></script>
+  <!-- socket.io served by Flask-SocketIO (always works, no internet needed) -->
+  <script src="/socket.io/socket.io.js"></script>
   <script src="/static/js/app.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
